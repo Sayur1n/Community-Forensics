@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI图像真伪检测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .upload-area {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .upload-area input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9em;
+            color: #adb5bd;
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .result-header h3 {
+            color: #495057;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .result-card h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .probability-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.5s ease;
+        }
+
+        .probability-fill.fake {
+            background: linear-gradient(90deg, #dc3545, #fd7e14);
+        }
+
+        .probability-text {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .description {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .description h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .description p {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .history-section {
+            margin-top: 40px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .history-header h3 {
+            color: #495057;
+        }
+
+        .history-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .date-selector {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background: white;
+            font-size: 0.9em;
+        }
+
+        .refresh-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6268;
+        }
+
+        .stats-summary {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .history-table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .history-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .history-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-real {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-fake {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .history-table {
+                font-size: 0.9em;
+            }
+
+            .history-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .history-controls {
+                justify-content: center;
+            }
+
+            .stats-summary {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AI图像真伪检测系统</h1>
+            <p>基于深度学习的图像真实性检测工具</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 上传区域 -->
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击选择图片或拖拽到此处</div>
+                    <div class="upload-hint">支持 PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP 格式，文件大小不超过16MB</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                
+                <div class="preview-section" id="previewSection">
+                    <img id="previewImage" class="preview-image">
+                    <br>
+                    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeImage()">开始检测</button>
+                </div>
+            </div>
+
+            <!-- 加载动画 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在分析图片，请稍候...</p>
+            </div>
+
+            <!-- 错误信息 -->
+            <div class="error-message" id="errorMessage"></div>
+
+            <!-- 结果显示区域 -->
+            <div class="result-section" id="resultSection">
+                <div class="result-header">
+                    <h3>检测结果</h3>
+                </div>
+                
+                <div class="result-grid" id="resultGrid">
+                    <!-- 结果卡片将在这里动态生成 -->
+                </div>
+
+                <div class="description" id="description">
+                    <!-- 描述将在这里显示 -->
+                </div>
+            </div>
+
+            <!-- 历史记录 -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h3>历史检测记录</h3>
+                    <div class="history-controls">
+                        <select class="date-selector" id="dateSelector" onchange="filterByDate()">
+                            <option value="">所有日期</option>
+                        </select>
+                        <button class="refresh-btn" onclick="loadHistory()">刷新</button>
+                    </div>
+                </div>
+
+                <!-- 统计摘要 -->
+                <div class="stats-summary" id="statsSummary" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalCount">0</div>
+                        <div class="stat-label">总检测数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="realCount">0</div>
+                        <div class="stat-label">真实图片</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="fakeCount">0</div>
+                        <div class="stat-label">生成图片</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="avgTime">0s</div>
+                        <div class="stat-label">平均耗时</div>
+                    </div>
+                </div>
+
+                <div class="history-table">
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>文件名</th>
+                                <th>检测时间</th>
+                                <th>真实概率</th>
+                                <th>生成概率</th>
+                                <th>结果</th>
+                                <th>分析时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- 历史记录将在这里动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="no-results" id="noResults" style="display: none;">
+                    暂无检测记录
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let allResults = [];
+        let filteredResults = [];
+
+        // 文件选择处理
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // 检查文件大小
+                const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+                if (file.size > maxSize) {
+                    showError('文件大小超出限制，请选择小于16MB的图片文件');
+                    // 清空文件选择
+                    e.target.value = '';
+                    selectedFile = null;
+                    document.getElementById('previewSection').style.display = 'none';
+                    return;
+                }
+                
+                selectedFile = file;
+                hideError(); // 隐藏之前的错误信息
+                showPreview(file);
+            }
+        });
+
+        // 拖拽上传
+        const uploadArea = document.querySelector('.upload-area');
+        
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#f0f2ff';
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#dee2e6';
+            uploadArea.style.background = '#f8f9fa';
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#dee2e6';
+            uploadArea.style.background = '#f8f9fa';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                
+                // 检查文件大小
+                const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+                if (file.size > maxSize) {
+                    showError('文件大小超出限制，请选择小于16MB的图片文件');
+                    return;
+                }
+                
+                selectedFile = file;
+                hideError(); // 隐藏之前的错误信息
+                showPreview(file);
+            }
+        });
+
+        // 显示预览
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('previewSection').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 分析图片
+        function analyzeImage() {
+            if (!selectedFile) {
+                showError('请先选择图片文件');
+                return;
+            }
+
+            // 检查文件大小（16MB限制）
+            const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+            if (selectedFile.size > maxSize) {
+                showError('文件大小超出限制，请选择小于16MB的图片文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // 显示加载动画
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('resultSection').style.display = 'none';
+            hideError();
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // 根据状态码返回不同的错误信息
+                    if (response.status === 413) {
+                        throw new Error('文件大小超出限制，请选择小于16MB的图片文件');
+                    } else if (response.status === 400) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || '请求参数错误');
+                        });
+                    } else if (response.status === 500) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || '服务器内部错误');
+                        });
+                    } else {
+                        throw new Error(`服务器错误 (${response.status})`);
+                    }
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResult(data);
+                    loadHistory(); // 刷新历史记录
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+                showError(error.message || '网络错误，请重试');
+                console.error('Error:', error);
+            });
+        }
+
+        // 显示结果
+        function showResult(data) {
+            const resultGrid = document.getElementById('resultGrid');
+            const description = document.getElementById('description');
+
+            // 生成结果卡片
+            resultGrid.innerHTML = `
+                <div class="result-card">
+                    <h4>真实概率</h4>
+                    <div class="probability-bar">
+                        <div class="probability-fill" style="width: ${data.real_probability * 100}%"></div>
+                    </div>
+                    <div class="probability-text">${(data.real_probability * 100).toFixed(2)}%</div>
+                </div>
+                <div class="result-card">
+                    <h4>生成概率</h4>
+                    <div class="probability-bar">
+                        <div class="probability-fill fake" style="width: ${data.fake_probability * 100}%"></div>
+                    </div>
+                    <div class="probability-text">${(data.fake_probability * 100).toFixed(2)}%</div>
+                </div>
+                <div class="result-card">
+                    <h4>检测设备</h4>
+                    <div class="probability-text">${data.device}</div>
+                </div>
+                <div class="result-card">
+                    <h4>分析时间</h4>
+                    <div class="probability-text">${data.analysis_time}秒</div>
+                </div>
+            `;
+
+            // 显示描述
+            description.innerHTML = `
+                <h4>检测结果说明</h4>
+                <p>${data.description}</p>
+            `;
+
+            document.getElementById('resultSection').style.display = 'block';
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // 隐藏错误信息
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // 更新统计信息
+        function updateStats(results) {
+            const totalCount = results.length;
+            const realCount = results.filter(r => r.fake_probability <= 0.5).length;
+            const fakeCount = totalCount - realCount;
+            const avgTime = totalCount > 0 ? 
+                (results.reduce((sum, r) => sum + r.analysis_time, 0) / totalCount).toFixed(2) : 0;
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('realCount').textContent = realCount;
+            document.getElementById('fakeCount').textContent = fakeCount;
+            document.getElementById('avgTime').textContent = avgTime + 's';
+
+            document.getElementById('statsSummary').style.display = totalCount > 0 ? 'flex' : 'none';
+        }
+
+        // 更新日期选择器
+        function updateDateSelector(results) {
+            const dateSelector = document.getElementById('dateSelector');
+            const dates = [...new Set(results.map(r => r.date))].sort().reverse();
+            
+            // 保留"所有日期"选项
+            dateSelector.innerHTML = '<option value="">所有日期</option>';
+            
+            dates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = formatDate(date);
+                dateSelector.appendChild(option);
+            });
+        }
+
+        // 格式化日期显示
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            return `${year}年${month}月${day}日`;
+        }
+
+        // 按日期筛选
+        function filterByDate() {
+            const selectedDate = document.getElementById('dateSelector').value;
+            if (selectedDate) {
+                filteredResults = allResults.filter(r => r.date === selectedDate);
+            } else {
+                filteredResults = allResults;
+            }
+            displayResults(filteredResults);
+        }
+
+        // 显示结果
+        function displayResults(results) {
+            const tbody = document.getElementById('historyTableBody');
+            const noResults = document.getElementById('noResults');
+            
+            if (results.length === 0) {
+                tbody.innerHTML = '';
+                noResults.style.display = 'block';
+                document.querySelector('.history-table').style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                document.querySelector('.history-table').style.display = 'block';
+                
+                tbody.innerHTML = '';
+                results.forEach(result => {
+                    const row = document.createElement('tr');
+                    const isFake = result.fake_probability > 0.5;
+                    
+                    row.innerHTML = `
+                        <td>${result.filename}</td>
+                        <td>${result.timestamp}</td>
+                        <td>${(result.real_probability * 100).toFixed(2)}%</td>
+                        <td>${(result.fake_probability * 100).toFixed(2)}%</td>
+                        <td><span class="status-badge ${isFake ? 'status-fake' : 'status-real'}">${isFake ? '生成' : '真实'}</span></td>
+                        <td>${result.analysis_time}秒</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            updateStats(results);
+        }
+
+        // 加载历史记录
+        function loadHistory() {
+            fetch('/results')
+            .then(response => response.json())
+            .then(data => {
+                allResults = data;
+                filteredResults = data;
+                displayResults(data);
+                updateDateSelector(data);
+            })
+            .catch(error => {
+                console.error('Error loading history:', error);
+                showError('加载历史记录失败');
+            });
+        }
+
+        // 页面加载时获取历史记录
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHistory();
+        });
+    </script>
+</body>
+</html> 
